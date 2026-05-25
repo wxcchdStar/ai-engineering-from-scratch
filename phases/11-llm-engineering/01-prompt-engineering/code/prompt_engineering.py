@@ -3,10 +3,9 @@ import time
 import hashlib
 import re
 
-
 PROMPT_PATTERNS = {
     "persona": {
-        "name": "Persona Pattern",
+        "name": "Persona Pattern",  # 角色模式
         "template": (
             "You are {role} with {experience}.\n"
             "Your communication style is {style}.\n"
@@ -18,7 +17,7 @@ PROMPT_PATTERNS = {
         "description": "Activates a specific expert distribution in the model's training data",
     },
     "few_shot": {
-        "name": "Few-Shot Pattern",
+        "name": "Few-Shot Pattern",  # 少样本模式
         "template": (
             "Here are examples of the expected input/output format:\n\n"
             "{examples}\n\n"
@@ -29,7 +28,7 @@ PROMPT_PATTERNS = {
         "description": "Provides concrete examples to anchor the output format and style",
     },
     "chain_of_thought": {
-        "name": "Chain-of-Thought Pattern",
+        "name": "Chain-of-Thought Pattern",  # 思维链模式，think step by step
         "template": (
             "Think through this step by step.\n\n"
             "Problem: {problem}\n\n"
@@ -45,7 +44,7 @@ PROMPT_PATTERNS = {
         "description": "Forces explicit reasoning steps before the final answer",
     },
     "template_fill": {
-        "name": "Template Fill Pattern",
+        "name": "Template Fill Pattern",  # 模板填充模式
         "template": (
             "Extract information from the following text and fill in the template.\n\n"
             "Text: {text}\n\n"
@@ -57,7 +56,7 @@ PROMPT_PATTERNS = {
         "description": "Constrains output to a specific structure with named fields",
     },
     "critique": {
-        "name": "Critique Pattern",
+        "name": "Critique Pattern",  # 反思模式
         "template": (
             "Task: {task}\n\n"
             "Step 1: Generate an initial response.\n"
@@ -70,7 +69,7 @@ PROMPT_PATTERNS = {
         "description": "Self-refinement through explicit critique before final output",
     },
     "guardrail": {
-        "name": "Guardrail Pattern",
+        "name": "Guardrail Pattern",  # 护栏模式
         "template": (
             "You are a {role}.\n\n"
             "Rules:\n"
@@ -85,7 +84,7 @@ PROMPT_PATTERNS = {
         "description": "Constrains the model to a specific domain with explicit boundaries",
     },
     "meta_prompt": {
-        "name": "Meta-Prompt Pattern",
+        "name": "Meta-Prompt Pattern",  # 元提示模式
         "template": (
             "Write a prompt for an LLM that will {objective}.\n\n"
             "The prompt should include:\n"
@@ -101,7 +100,7 @@ PROMPT_PATTERNS = {
         "description": "Uses the LLM to generate optimized prompts for other tasks",
     },
     "decomposition": {
-        "name": "Decomposition Pattern",
+        "name": "Decomposition Pattern",  # 分解模式
         "template": (
             "Problem: {problem}\n\n"
             "Break this into sub-problems:\n"
@@ -115,7 +114,7 @@ PROMPT_PATTERNS = {
         "description": "Breaks complex problems into manageable pieces",
     },
     "audience_adapt": {
-        "name": "Audience Adaptation Pattern",
+        "name": "Audience Adaptation Pattern",  # 受众适应模式，核心思想是让 LLM 根据目标受众的知识水平、背景和需求，自动调整输出内容的深度、术语、风格和表达方式。
         "template": (
             "Explain {concept} for the following audience: {audience}.\n\n"
             "Constraints:\n"
@@ -129,7 +128,7 @@ PROMPT_PATTERNS = {
         "description": "Adapts explanation complexity to the target audience",
     },
     "boundary": {
-        "name": "Boundary Pattern",
+        "name": "Boundary Pattern",  # 边界模式，核心思想是在 prompt 中明确划定 LLM 可以做什么、不可以做什么的边界，从而约束模型的行为范围，防止输出越界、幻觉或不当内容。
         "template": (
             "You are an assistant that ONLY handles {scope}.\n\n"
             "If the user's request is within scope, help them fully.\n"
@@ -170,7 +169,9 @@ MODEL_CONFIGS = {
 def build_prompt(pattern_name, variables, system_override=None):
     pattern = PROMPT_PATTERNS.get(pattern_name)
     if not pattern:
-        raise ValueError(f"Unknown pattern: {pattern_name}. Available: {list(PROMPT_PATTERNS.keys())}")
+        raise ValueError(
+            f"Unknown pattern: {pattern_name}. Available: {list(PROMPT_PATTERNS.keys())}"
+        )
 
     missing = [v for v in pattern["variables"] if v not in variables]
     if missing:
@@ -236,7 +237,10 @@ def format_google_request(prompt):
     return {
         "model": MODEL_CONFIGS["gemini-1.5-pro"]["model"],
         "contents": [
-            {"role": "user", "parts": [{"text": f"{prompt['system']}\n\n{prompt['user']}"}]},
+            {
+                "role": "user",
+                "parts": [{"text": f"{prompt['system']}\n\n{prompt['user']}"}],
+            },
         ],
         "generationConfig": {
             "temperature": prompt["temperature"],
@@ -254,7 +258,9 @@ FORMATTERS = {
 
 def simulate_llm_call(model_name, request):
     time.sleep(0.01)
-    prompt_hash = hashlib.md5(json.dumps(request, sort_keys=True).encode()).hexdigest()[:8]
+    prompt_hash = hashlib.md5(json.dumps(request, sort_keys=True).encode()).hexdigest()[
+        :8
+    ]
 
     simulated_responses = {
         "gpt-4o": {
@@ -327,7 +333,11 @@ def score_response(response_text, criteria):
         scores["length_compliant"] = word_count <= criteria["max_words"]
 
     if "required_keywords" in criteria:
-        found = [kw for kw in criteria["required_keywords"] if kw.lower() in response_text.lower()]
+        found = [
+            kw
+            for kw in criteria["required_keywords"]
+            if kw.lower() in response_text.lower()
+        ]
         scores["keywords_found"] = found
         scores["keyword_coverage"] = (
             len(found) / len(criteria["required_keywords"])
@@ -336,7 +346,11 @@ def score_response(response_text, criteria):
         )
 
     if "forbidden_phrases" in criteria:
-        violations = [fp for fp in criteria["forbidden_phrases"] if fp.lower() in response_text.lower()]
+        violations = [
+            fp
+            for fp in criteria["forbidden_phrases"]
+            if fp.lower() in response_text.lower()
+        ]
         scores["forbidden_violations"] = violations
         scores["no_violations"] = len(violations) == 0
 
@@ -506,11 +520,15 @@ def run_test_suite():
             latency = data["latency_ms"]
             print(f"  {model_name:<25} {score:>8.3f} {tokens:>8} {latency:>8}ms")
 
-        all_results.append({
-            "test": test["name"],
-            "pattern": test["pattern"],
-            "rankings": [(name, data["scores"]["composite_score"]) for name, data in ranked],
-        })
+        all_results.append(
+            {
+                "test": test["name"],
+                "pattern": test["pattern"],
+                "rankings": [
+                    (name, data["scores"]["composite_score"]) for name, data in ranked
+                ],
+            }
+        )
 
     print(f"\n\n{'=' * 70}")
     print("  SUMMARY: MODEL RANKINGS ACROSS ALL TESTS")
@@ -545,13 +563,16 @@ def run_single_prompt_demo():
     print("  SINGLE PROMPT BUILD + TEST")
     print("=" * 70)
 
-    prompt = build_prompt("persona", {
-        "role": "a senior DevOps engineer at Netflix",
-        "experience": "8 years of infrastructure automation",
-        "style": "direct and practical",
-        "priority": "reliability over speed",
-        "task": "Explain why container orchestration matters for microservices.",
-    })
+    prompt = build_prompt(
+        "persona",
+        {
+            "role": "a senior DevOps engineer at Netflix",
+            "experience": "8 years of infrastructure automation",
+            "style": "direct and practical",
+            "priority": "reliability over speed",
+            "task": "Explain why container orchestration matters for microservices.",
+        },
+    )
 
     print(f"\n  System message:\n    {prompt['system']}")
     print(f"\n  User message:\n    {prompt['user'][:200]}...")
