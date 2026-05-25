@@ -8,21 +8,21 @@
 
 | # | Lesson | 状态 |
 |---|--------|------|
+| 01 | The Tool Interface | ✅ |
+| 02 | Function Calling Deep Dive | ✅ |
+| 03 | Parallel and Streaming Tool Calls | ✅ |
+| 04 | Structured Output | ✅ |
+| 05 | Tool Schema Design | ✅ |
 
-## 待翻译（01-23）
+## 待翻译（06-23）
 
 | # | Lesson | 状态 |
 |---|--------|------|
-| 01 | The Tool Interface | ⬜ |
-| 02 | Function Calling Deep Dive | ⬜ |
-| 03 | Parallel and Streaming Tool Calls | ⬜ |
-| 04 | Structured Output | ⬜ |
-| 05 | Tool Schema Design | ⬜ |
-| 06 | MCP Fundamentals | ⬜ |
-| 07 | Building an MCP Server | ⬜ |
-| 08 | Building an MCP Client | ⬜ |
-| 09 | MCP Transports | ⬜ |
-| 10 | MCP Resources and Prompts | ⬜ |
+| 06 | MCP Fundamentals | ✅ |
+| 07 | Building an MCP Server | ✅ |
+| 08 | Building an MCP Client | ✅ |
+| 09 | MCP Transports | ✅ |
+| 10 | MCP Resources and Prompts | ✅ |
 | 11 | MCP Sampling | ⬜ |
 | 12 | MCP Roots and Elicitation | ⬜ |
 | 13 | MCP Async Tasks | ⬜ |
