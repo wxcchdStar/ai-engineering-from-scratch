@@ -1,0 +1,136 @@
+# 工具使用与函数调用 (Tool Use and Function Calling)
+
+> Toolformer (Schick et al., 2023) 开创了自监督工具标注。Berkeley Function Calling Leaderboard V4 (Patil et al., 2025) 设定了 2026 年的标准：40% agentic、30% 多轮、10% 实时、10% 非实时、10% 幻觉检测。单轮已基本解决。记忆、动态决策和长程工具链仍是未解难题。
+
+**类型：** 构建 (Build)
+**语言：** Python (标准库)
+**前置课程：** Phase 14 · 01 (Agent 循环), Phase 13 · 01 (函数调用深入)
+**时间：** 约 60 分钟
+
+## 学习目标
+
+- 解释 Toolformer 的自监督训练信号：仅当工具执行结果降低了下一个 token 的损失时才保留工具标注。
+- 列举 BFCL V4 的五个评估类别及其各自衡量的内容。
+- 用标准库实现一个工具注册表，包含 schema 校验、参数强制转换和执行沙箱。
+- 诊断 2026 年的三大未解难题：长程工具链、动态决策和记忆。
+
+## 问题
+
+早期的工具使用问的是：模型能否预测出正确的函数调用？现代工具使用问的是：模型能否在 40 步中串联工具，具备记忆，在部分可观测条件下，从工具失败中恢复，且不幻觉出根本不存在的工具？
+
+Toolformer 建立了基线：模型可以通过自监督学习何时调用工具。BFCL V4 定义了 2026 年的评估目标。两者之间的差距就是生产级 Agent 所处的真实空间。
+
+## 概念
+
+### Toolformer (Schick et al., NeurIPS 2023)
+
+核心思想：让模型在自己的预训练语料上标注候选 API 调用。对每个候选调用，执行它。仅当包含工具结果降低了下个 token 的损失时才保留该标注。在过滤后的语料上微调。
+
+覆盖的工具：计算器、问答系统、搜索引擎、翻译器、日历。自监督信号纯粹取决于工具是否有助于预测文本——无需人工标注。
+
+规模效应：工具使用能力随规模涌现。较小的模型会因工具标注而受损；较大的模型则受益。这就是为什么 2026 年的前沿模型内置了强大的工具使用能力，而大多数 7B 模型需要显式的工具使用微调才能可靠工作。
+
+### Berkeley Function Calling Leaderboard V4 (Patil et al., ICML 2025)
+
+BFCL 是 2026 年事实上的评估标准。V4 的组成：
+
+- **Agentic (40%)** — 完整的 Agent 轨迹：记忆、多轮、动态决策。
+- **多轮 (Multi-Turn, 30%)** — 带工具链的交互式对话。
+- **实时 (Live, 10%)** — 用户提交的真实 prompt（分布更难）。
+- **非实时 (Non-Live, 10%)** — 合成测试用例。
+- **幻觉检测 (Hallucination, 10%)** — 检测何时不应调用任何工具。
+
+V3 引入了基于状态的评估：在工具序列之后，检查 API 的实际状态（例如"文件是否已创建？"），而非匹配工具调用的 AST。V4 新增了网络搜索、记忆和格式敏感性类别。
+
+2026 年的关键发现：单轮函数调用已接近解决。失败集中在记忆（跨轮次携带上下文）、动态决策（基于先前结果选择工具）、长程链（20+ 步后漂移）和幻觉检测（当没有工具适用时拒绝调用）。
+
+### 工具 Schema
+
+每个提供商都有自己的 schema。细节不同但形状一致：
+
+```
+name: string
+description: string（做什么、何时使用）
+input_schema: JSON Schema（properties、required、types、enums）
+```
+
+Anthropic 直接使用 `input_schema`。OpenAI 使用 `function.parameters`。两者都接受 JSON Schema。描述是关键——模型通过阅读描述来选择正确的工具。糟糕的工具描述是"选错工具"失败的首要原因。
+
+### 参数校验
+
+不要信任任何工具调用。校验：
+
+1. **类型强制转换。** 模型可能返回字符串 "5"，而 schema 要求 int。如果无歧义则强制转换；否则拒绝。
+2. **枚举校验。** 如果 schema 规定 `status in {"open", "closed"}` 而模型输出 `"in_progress"`，则拒绝并返回描述性错误。
+3. **必填字段。** 缺少必填字段 → 立即将错误观察返回给模型，而非崩溃。
+4. **格式校验。** 日期、邮箱、URL——用具体的解析器校验，而非正则。
+
+每次校验失败都应返回结构化的观察结果，以便模型用正确的格式重试。
+
+### 并行工具调用
+
+现代提供商支持在一个 assistant 回合中并行调用多个工具。循环如下：
+
+1. 模型发出 3 个工具调用，各自带有不同的 `tool_use_id`。
+2. 运行时执行它们（如果独立则并行执行）。
+3. 每个结果作为 `tool_result` 块返回，通过 `tool_use_id` 关联。
+
+工程规则：将关联 ID 视为关键。搞混了就会导致工具与结果的路由错配。
+
+### 沙箱
+
+工具执行是沙箱边界。详见第 09 课。简言之：每个工具都应指定读写范围、网络访问、超时、内存上限。通用的 `run_shell(cmd)` 是危险信号；具体的 `git_status()` 更安全。
+
+## 构建
+
+`code/main.py` 实现了一个生产级工具注册表：
+
+- JSON Schema 子集校验器（仅标准库）。
+- 工具注册，包含描述、输入 schema、超时和执行器。
+- 参数强制转换和枚举校验。
+- 带关联 ID 的并行工具分发。
+- 结构化的错误观察字符串。
+
+运行：
+
+```
+python3 code/main.py
+```
+
+追踪显示一个迷你 Agent 在一个回合中调用三个工具，其中一个故意构造的错误调用被拒绝，并返回模型可据此行动的描述性错误。
+
+## 使用
+
+每个提供商都有自己的工具 schema——Anthropic、OpenAI、Gemini、Bedrock。如果需要多提供商支持，使用翻译层（OpenAI Agents SDK、Vercel AI SDK、LangChain 工具适配器）。BFCL 是参考基准——如果工具使用是产品的核心，在发布前用它测试你的 Agent。
+
+## 交付
+
+`outputs/skill-tool-registry.md` 为给定的任务领域生成工具目录、schema 和注册表。包含描述质量检查（每个工具的描述是否告诉模型何时使用它？）。
+
+## 练习
+
+1. 添加一个"no-op"工具，让模型显式拒绝使用任何其他工具。在类似 BFCL 的幻觉测试上测量效果。
+2. 实现 int-as-string 和 float-as-string 的参数强制转换。强制转换在什么情况下开始掩盖真正的 bug？
+3. 添加每个工具的超时和熔断器（连续 3 次失败后 60 秒内拒绝该工具）。这对模型的恢复方式有什么影响？
+4. 阅读 BFCL V4 的描述。选择一个类别（如"多轮"），用你的 Agent 运行 10 个示例 prompt。报告通过率。
+5. 将标准库校验器移植到 Pydantic 或 Zod。Pydantic/Zod 捕获了哪些玩具实现遗漏的问题？
+
+## 关键术语
+
+| 术语 | 人们怎么说 | 实际含义 |
+|------|-----------|---------|
+| 函数调用 (Function calling) | "工具使用" | 带校验 schema 的结构化输出工具调用 |
+| Toolformer | "自监督工具标注" | Schick 2023——仅保留能降低下个 token 损失的工具调用 |
+| BFCL | "Berkeley 函数调用排行榜" | 2026 基准：40% agentic、30% 多轮、10% 实时、10% 非实时、10% 幻觉 |
+| 工具 Schema | "给模型的函数签名" | name、description、参数的 JSON Schema |
+| tool_use_id | "关联 ID" | 将工具调用与其结果绑定；对并行分发至关重要 |
+| 幻觉检测 (Hallucination detection) | "知道何时不调用" | V4 类别：当没有工具适用时拒绝调用 |
+| 参数强制转换 (Argument coercion) | "字符串到整数的修复" | 对可预测的 schema 不匹配做窄修复；有歧义时拒绝 |
+| 沙箱 (Sandboxing) | "工具执行边界" | 每个工具的读写范围、网络、超时、内存上限 |
+
+## 扩展阅读
+
+- [Schick et al., Toolformer (arXiv:2302.04761)](https://arxiv.org/abs/2302.04761) — 自监督工具标注
+- [Berkeley Function Calling Leaderboard (V4)](https://gorilla.cs.berkeley.edu/leaderboard.html) — 2026 评估基准
+- [Anthropic, Tool use documentation](https://platform.claude.com/docs/en/agent-sdk/overview) — Claude Agent SDK 中的生产级工具 schema
+- [OpenAI Agents SDK docs](https://openai.github.io/openai-agents-python/) — 函数工具类型和 Guardrails

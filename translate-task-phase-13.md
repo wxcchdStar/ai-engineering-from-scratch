@@ -23,19 +23,19 @@
 | 08 | Building an MCP Client | ✅ |
 | 09 | MCP Transports | ✅ |
 | 10 | MCP Resources and Prompts | ✅ |
-| 11 | MCP Sampling | ⬜ |
-| 12 | MCP Roots and Elicitation | ⬜ |
-| 13 | MCP Async Tasks | ⬜ |
-| 14 | MCP Apps | ⬜ |
-| 15 | MCP Security Tool Poisoning | ⬜ |
-| 16 | MCP Security OAuth 2.1 | ⬜ |
-| 17 | MCP Gateways and Registries | ⬜ |
-| 18 | MCP Auth Production | ⬜ |
-| 19 | A2A Protocol | ⬜ |
-| 20 | OpenTelemetry GenAI | ⬜ |
-| 21 | LLM Routing Layer | ⬜ |
-| 22 | Skills and Agent SDKs | ⬜ |
-| 23 | Capstone Tool Ecosystem | ⬜ |
+| 11 | MCP Sampling | ✅ |
+| 12 | MCP Roots and Elicitation | ✅ |
+| 13 | MCP Async Tasks | ✅ |
+| 14 | MCP Apps | ✅ |
+| 15 | MCP Security Tool Poisoning | ✅ |
+| 16 | MCP Security OAuth 2.1 | ✅ |
+| 17 | MCP Gateways and Registries | ✅ |
+| 18 | MCP Auth Production | ✅ |
+| 19 | A2A Protocol | ✅ |
+| 20 | OpenTelemetry GenAI | ✅ |
+| 21 | LLM Routing Layer | ✅ |
+| 22 | Skills and Agent SDKs | ✅ |
+| 23 | Capstone Tool Ecosystem | ✅ |
 
 ## 翻译规范
 
@@ -50,3 +50,7 @@
 - 输入：`{NN-lesson-name}/docs/en.md`
 - 输出：`{NN-lesson-name}/docs/zh.md`
 - 按序号逐一翻译
+
+## 全部完成 ✅
+
+Phase 13 全部 23 课（01-23）翻译已完成。
